@@ -228,47 +228,54 @@
 
                 let width = img.width;
                 let height = img.height;
+
+                // Initial scale down if original image is massive
+                let scale = 1.0;
+                if (width > 1500 || height > 1500) {
+                    scale = 0.7;
+                }
+
+                width = Math.floor(width * scale);
+                height = Math.floor(height * scale);
+
                 canvas.width = width;
                 canvas.height = height;
                 ctx.drawImage(img, 0, 0, width, height);
 
-                // Iterative binary search / loop for hitting target size closely using quality adjustment
-                let minQuality = 0.05;
-                let maxQuality = 1.0;
                 let quality = 0.8;
-                let bestBlob = null;
+                let attempts = 0;
 
-                // Simple iterative approach to approach target KB
-                canvas.toBlob(function cb(blob) {
-                    if (!blob) return;
-                    bestBlob = blob;
-                    
-                    // Loop to adjust quality based on target size
-                    let currentQuality = 0.9;
-                    let iterations = 0;
+                function processCompression() {
+                    canvas.toBlob(function (blob) {
+                        if (!blob) return;
+                        let currentKB = blob.size / 1024;
 
-                    function tryCompress() {
-                        canvas.toBlob(function(b) {
-                            if (!b) return;
-                            let currentKB = b.size / 1024;
-                            
-                            if ((currentKB <= targetKB || iterations > 8) || currentQuality <= 0.05) {
-                                // Trigger download once target is reached or close enough
-                                const link = document.createElement('a');
-                                link.href = URL.createObjectURL(b);
-                                link.download = `${customName}.jpg`;
-                                link.click();
-                            } else {
-                                currentQuality -= 0.15;
-                                iterations++;
-                                canvas.toBlob(arguments.callee, 'image/jpeg', currentQuality);
-                            }
-                        }, 'image/jpeg', currentQuality);
-                    }
+                        // Agar size target se zyada hai aur attempts bache hain toh dimensions aur quality aur kam karo
+                        if (currentKB > targetKB && attempts < 6) {
+                            attempts++;
+                            quality -= 0.1;
+                            if (quality < 0.1) quality = 0.1;
 
-                    tryCompress();
+                            // Thoda resolution bhi reduce karo
+                            width = Math.floor(width * 0.85);
+                            height = Math.floor(height * 0.85);
+                            canvas.width = width;
+                            canvas.height = height;
+                            ctx.clearRect(0, 0, width, height);
+                            ctx.drawImage(img, 0, 0, width, height);
 
-                }, 'image/jpeg', quality);
+                            processCompression();
+                        } else {
+                            // Download trigger kar do
+                            const link = document.createElement('a');
+                            link.href = URL.createObjectURL(blob);
+                            link.download = `${customName}.jpg`;
+                            link.click();
+                        }
+                    }, 'image/jpeg', quality);
+                }
+
+                processCompression();
             };
         };
 
