@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aadhaar A4 PDF Generator - Your Suvidha Centre</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 500px; width: 100%; }
+        h2 { text-align: center; color: #2c3e50; margin-bottom: 5px; }
+        .powered-by { text-align: center; font-size: 13px; color: #7f8c8d; margin-bottom: 25px; font-weight: bold; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+        input[type="file"], input[type="text"] { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { background-color: #4CAF50; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; font-weight: bold; margin-top: 10px; }
+        button:hover { background-color: #45a049; }
+        .back-link { display: block; text-align: center; margin-top: 15px; text-decoration: none; color: #3498db; font-size: 14px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Aadhaar A4 Generator</h2>
+    <div class="powered-by">Powered by Gill Tech Solutions</div>
+    
+    <div class="form-group">
+        <label for="pdfName">PDF File Ka Naam:</label>
+        <input type="text" id="pdfName" value="Aadhaar_Document">
+    </div>
+
+    <div class="form-group">
+        <label for="frontImage">Aadhaar Front Image:</label>
+        <input type="file" id="frontImage" accept="image/*">
+    </div>
+
+    <div class="form-group hidden" id="signGroup">
+        <label for="signImage">Signature Image:</label>
+        <input type="file" id="signImage" accept="image/*">
+    </div>
+
+    <div class="form-group">
+        <label for="backImage">Aadhaar Back Image:</label>
+        <input type="file" id="backImage" accept="image/*">
+    </div>
+
+    <button onclick="generatePDF()">Generate & Download PDF</button>
+    <a href="index.html" class="back-link">&larr; Back to Home</a>
+</div>
+
+<script>
+    window.onload = function() {
+        let wantSign = confirm("Kya aapko PDF mein Signature bhi add karna hai?");
+        if (wantSign) {
+            document.getElementById('signGroup').classList.remove('hidden');
+        }
+    };
+
+    async function generatePDF() {
+        const frontInput = document.getElementById('frontImage').files[0];
+        const backInput = document.getElementById('backImage').files[0];
+        const signGroup = document.getElementById('signGroup');
+        const signInput = document.getElementById('signImage').files[0];
+        let customName = document.getElementById('pdfName').value.trim() || "Aadhaar_Document";
+        customName = customName.replace(/\s+/g, '_');
+
+        if (!frontInput || !backInput) {
+            alert("Kripya kam se kam Aadhaar ka Front aur Back image zaroor select karein!");
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+        const readImage = (file) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
+                reader.readAsDataURL(file);
+            });
+        };
+
+        try {
+            const frontData = await readImage(frontInput);
+            doc.addImage(frontData, 'JPEG', 55, 20, 100, 63);
+
+            if (!signGroup.classList.contains('hidden') && signInput) {
+                const signData = await readImage(signInput);
+                doc.addImage(signData, 'JPEG', 85, 95, 40, 20);
+            }
+
+            const backData = await readImage(backInput);
+            let backYCoord = (!signGroup.classList.contains('hidden') && signInput) ? 130 : 100;
+            doc.addImage(backData, 'JPEG', 55, backYCoord, 100, 63);
+
+            doc.save(`${customName}.pdf`);
+        } catch (error) {
+            alert("PDF generate karne mein samasya aayi.");
+        }
+    }
+</script>
+
+</body>
+</html>
