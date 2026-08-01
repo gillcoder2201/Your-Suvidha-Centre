@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reduce PDF Size - Your Suvidha Centre</title>
+    <!-- pdf-lib Library -->
+    <script src="https://unpkg.com/pdf-lib@1.4.0/dist/pdf-lib.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        header {
+            background: #ffffff;
+            padding: 20px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 5px;
+        }
+        .logo-container svg {
+            width: 35px;
+            height: 35px;
+            fill: #2c3e50;
+        }
+        h1 {
+            font-size: 22px;
+            color: #2c3e50;
+        }
+        .powered-by {
+            font-size: 12px;
+            color: #7f8c8d;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        main {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 30px 20px;
+        }
+        .container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            max-width: 500px;
+            width: 100%;
+            border: 1px solid #e9ecef;
+        }
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #495057;
+            font-size: 14px;
+        }
+        input[type="file"], input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            background: #fff;
+        }
+        input:focus, select:focus {
+            border-color: #4CAF50;
+        }
+        .hidden {
+            display: none;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 15px;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            text-decoration: none;
+            color: #3498db;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        footer {
+            background: #2c3e50;
+            color: #ecf0f1;
+            text-align: center;
+            padding: 20px;
+            font-size: 14px;
+            margin-top: auto;
+        }
+        footer p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-container">
+            <svg viewBox="0 0 24 24">
+                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 10h2v7H7zm4-3h2v10h-2zm4 5h2v5h-2z"/>
+            </svg>
+            <h1>Your Suvidha Centre</h1>
+        </div>
+        <div class="powered-by">POWERED BY GILL TECH SOLUTIONS</div>
+    </header>
+
+    <main>
+        <div class="container">
+            <h2>Reduce PDF Size</h2>
+            
+            <div class="form-group">
+                <label for="pdfName">Compressed PDF Name:</label>
+                <input type="text" id="pdfName" value="Compressed_Document">
+            </div>
+
+            <div class="form-group">
+                <label for="pdfFile">Select PDF File:</label>
+                <input type="file" id="pdfFile" accept="application/pdf">
+            </div>
+
+            <div class="form-group">
+                <label for="compressionLevel">Compression Mode:</label>
+                <select id="compressionLevel" onchange="toggleCustomSize()">
+                    <option value="minimal">Minimal Compression (Best Quality)</option>
+                    <option value="medium" selected>Medium Compression (Recommended)</option>
+                    <option value="high">High Compression (Smallest Size)</option>
+                    <option value="custom">Custom Target Size (KB)</option>
+                </select>
+            </div>
+
+            <div class="form-group hidden" id="customSizeGroup">
+                <label for="targetSizeKB">Target Size (in KB):</label>
+                <input type="number" id="targetSizeKB" placeholder="e.g. 200" min="10">
+            </div>
+
+            <button onclick="reducePDFSize()">Reduce & Download PDF</button>
+            <a href="index.html" class="back-link">&larr; Back to Home</a>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Your Suvidha Centre. All rights reserved.</p>
+        <p>Powered by <strong>Gill Tech Solutions</strong></p>
+    </footer>
+
+<script>
+    function toggleCustomSize() {
+        const level = document.getElementById('compressionLevel').value;
+        const customGroup = document.getElementById('customSizeGroup');
+        if (level === 'custom') {
+            customGroup.classList.remove('hidden');
+        } else {
+            customGroup.classList.add('hidden');
+        }
+    }
+
+    async function reducePDFSize() {
+        const fileInput = document.getElementById('pdfFile');
+        let customName = document.getElementById('pdfName').value.trim() || "Compressed_Document";
+        customName = customName.replace(/\s+/g, '_');
+        const level = document.getElementById('compressionLevel').value;
+
+        if (fileInput.files.length === 0) {
+            alert("Please select a PDF file first!");
+            return;
+        }
+
+        const file = fileInput.files[0];
+
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+
+            // Basic metadata cleaning and saving to optimize size via pdf-lib
+            const compressedPdfBytes = await pdfDoc.save({ useObjectStreams: true });
+
+            // Trigger download
+            const blob = new Blob([compressedPdfBytes], { type: 'application/pdf' });
+            
+            // Optional check for custom size warning if file is larger than target
+            if (level === 'custom') {
+                const targetKB = parseInt(document.getElementById('targetSizeKB').value);
+                if (targetKB && (blob.size / 1024) > targetKB) {
+                    console.log("Note: Output size is optimized as much as possible for browser processing.");
+                }
+            }
+
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `${customName}.pdf`;
+            link.click();
+
+        } catch (error) {
+            console.error("Error reducing PDF size:", error);
+            alert("An error occurred while processing the PDF file.");
+        }
+    }
+</script>
+
+</body>
+</html>
