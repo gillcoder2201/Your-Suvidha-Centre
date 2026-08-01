@@ -60,7 +60,7 @@
             padding: 30px;
             border-radius: 8px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            max-width: 500px;
+            max-width: 550px;
             width: 100%;
             border: 1px solid #e9ecef;
         }
@@ -93,6 +93,48 @@
         input[type="file"]:focus, input[type="text"]:focus {
             border-color: #4CAF50;
         }
+        /* Draggable List Styles */
+        #fileList {
+            list-style: none;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            padding: 5px;
+            background: #fdfdfd;
+        }
+        .file-item {
+            padding: 10px;
+            background: #ffffff;
+            margin-bottom: 5px;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            cursor: grab;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 14px;
+            user-select: none;
+        }
+        .file-item:active {
+            cursor: grabbing;
+        }
+        .file-item.dragging {
+            opacity: 0.4;
+            background: #e9ecef;
+        }
+        .file-item span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 400px;
+        }
+        .drag-handle {
+            color: #adb5bd;
+            font-weight: bold;
+            margin-right: 8px;
+        }
         button {
             background-color: #4CAF50;
             color: white;
@@ -103,7 +145,7 @@
             width: 100%;
             font-size: 16px;
             font-weight: 600;
-            margin-top: 10px;
+            margin-top: 15px;
             transition: background-color 0.2s;
         }
         button:hover {
@@ -159,7 +201,12 @@
 
             <div class="form-group">
                 <label for="pdfFiles">Select PDF Files (Multiple):</label>
-                <input type="file" id="pdfFiles" accept="application/pdf" multiple>
+                <input type="file" id="pdfFiles" accept="application/pdf" multiple onchange="handleFileSelection(event)">
+            </div>
+
+            <div class="form-group" id="previewContainer" style="display:none;">
+                <label>Drag & Drop to Reorder Files:</label>
+                <ul id="fileList"></ul>
             </div>
 
             <button onclick="mergePDFs()">Merge & Download PDF</button>
@@ -174,12 +221,86 @@
     </footer>
 
 <script>
+    let selectedFilesArray = [];
+
+    function handleFileSelection(event) {
+        const files = Array.from(event.target.files);
+        selectedFilesArray = files;
+        renderFileList();
+    }
+
+    function renderFileList() {
+        const fileListUl = document.getElementById('fileList');
+        const previewContainer = document.getElementById('previewContainer');
+        fileListUl.innerHTML = '';
+
+        if (selectedFilesArray.length > 0) {
+            previewContainer.style.display = 'block';
+            selectedFilesArray.forEach((file, index) => {
+                const li = document.createElement('li');
+                li.className = 'file-item';
+                li.draggable = true;
+                li.dataset.index = index;
+
+                li.innerHTML = `<span style="display:flex; align-items:center;"><span class="drag-handle">&#9776;</span> ${file.name}</span> <small style="color:#6c757d;">#${index + 1}</small>`;
+
+                // Drag and Drop Events
+                li.addEventListener('dragstart', () => {
+                    li.classList.add('dragging');
+                });
+
+                li.addEventListener('dragend', () => {
+                    li.classList.remove('dragging');
+                    updateFilesOrder();
+                });
+
+                fileListUl.appendChild(li);
+            });
+        } else {
+            previewContainer.style.display = 'none';
+        }
+    }
+
+    const fileListUl = document.getElementById('fileList');
+    fileListUl.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const draggingItem = document.querySelector('.dragging');
+        const siblings = [...fileListUl.querySelectorAll('.file-item:not(.dragging)')];
+
+        let nextSibling = siblings.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = e.clientY - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+
+        if (nextSibling == null) {
+            fileListUl.appendChild(draggingItem);
+        } else {
+            fileListUl.insertBefore(draggingItem, nextSibling);
+        }
+    });
+
+    function updateFilesOrder() {
+        const itemNodes = fileListUl.querySelectorAll('.file-item');
+        const newOrderedFiles = [];
+        itemNodes.forEach((node, newIndex) => {
+            const oldIndex = node.dataset.index;
+            newOrderedFiles.push(selectedFilesArray[oldIndex]);
+            node.dataset.index = newIndex;
+            node.querySelector('small').textContent = `#${newIndex + 1}`;
+        });
+        selectedFilesArray = newOrderedFiles;
+    }
+
     async function mergePDFs() {
-        const fileInput = document.getElementById('pdfFiles');
         let customName = document.getElementById('pdfName').value.trim() || "Merged_Document";
         customName = customName.replace(/\s+/g, '_');
 
-        if (fileInput.files.length < 2) {
+        if (selectedFilesArray.length < 2) {
             alert("Please select at least 2 PDF files to merge!");
             return;
         }
@@ -187,8 +308,8 @@
         try {
             const mergedPdf = await PDFLib.PDFDocument.create();
 
-            for (let i = 0; i < fileInput.files.length; i++) {
-                const file = fileInput.files[i];
+            for (let i = 0; i < selectedFilesArray.length; i++) {
+                const file = selectedFilesArray[i];
                 const arrayBuffer = await file.arrayBuffer();
                 const pdf = await PDFLib.PDFDocument.load(arrayBuffer);
                 const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
