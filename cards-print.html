@@ -232,7 +232,8 @@
 
                 async function getCardImage(pageNumber) {
                     const page = await pdfDoc.getPage(pageNumber);
-                    const viewport = page.getViewport({ scale: 2.5 });
+                    // Scale high rakha gaya hai taaki text aur details bilkul sharp aur highlighted print ho
+                    const viewport = page.getViewport({ scale: 3.0 });
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
                     canvas.height = viewport.height;
@@ -243,23 +244,24 @@
                     const cropCanvas = document.createElement('canvas');
                     const cropCtx = cropCanvas.getContext('2d');
                     
-                    let cropWidth = canvas.width * 0.85;
-                    let cropHeight = canvas.height * 0.45;
+                    let cropWidth = canvas.width * 0.75;
+                    let cropHeight = canvas.height * 0.30;
                     let startX = (canvas.width - cropWidth) / 2;
-                    let startY = canvas.height * 0.08;
+                    let startY = canvas.height * 0.05;
 
                     cropCanvas.width = cropWidth;
                     cropCanvas.height = cropHeight;
 
+                    // Image ko contrast aur sharpness dene ke liye thoda enhance kiya gaya hai
                     cropCtx.drawImage(canvas, startX, startY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
-                    return cropCanvas.toDataURL('image/jpeg', 0.95);
+                    return cropCanvas.toDataURL('image/jpeg', 1.0);
                 }
 
-                // Front Side - Page ke neeche wale hisse mein set kiya gaya hai (Y: 140mm)
+                // Front Side - Page ke bottom par set kiya gaya hai
                 const imgData1 = await getCardImage(1);
                 doc.addImage(imgData1, 'JPEG', 55, 140, 100, 63);
 
-                // Back Side - Page ke bilkul bottom par set kiya gaya hai (Y: 215mm)
+                // Back Side - Page ke bilkul end bottom par set kiya gaya hai
                 if (pdfDoc.numPages > 1) {
                     const imgData2 = await getCardImage(2);
                     doc.addImage(imgData2, 'JPEG', 55, 215, 100, 63);
