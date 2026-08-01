@@ -4,8 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reduce PDF Size - Your Suvidha Centre</title>
-    <!-- pdf-lib Library -->
-    <script src="https://unpkg.com/pdf-lib@1.4.0/dist/pdf-lib.min.js"></script>
+    <!-- jsPDF Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- pdf.js Library to read PDF pages -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    </script>
     <style>
         * {
             box-sizing: border-box;
@@ -169,13 +174,8 @@
                     <option value="minimal">Minimal Compression (Best Quality)</option>
                     <option value="medium" selected>Medium Compression (Recommended)</option>
                     <option value="high">High Compression (Smallest Size)</option>
-                    <option value="custom">Custom Target Size (KB)</option>
+                    <option value="custom">Custom Quality / Compression</option>
                 </select>
-            </div>
-
-            <div class="form-group hidden" id="customSizeGroup">
-                <label for="targetSizeKB">Target Size (in KB):</label>
-                <input type="number" id="targetSizeKB" placeholder="e.g. 200" min="10">
             </div>
 
             <button onclick="reducePDFSize()">Reduce & Download PDF</button>
@@ -189,16 +189,6 @@
     </footer>
 
 <script>
-    function toggleCustomSize() {
-        const level = document.getElementById('compressionLevel').value;
-        const customGroup = document.getElementById('customSizeGroup');
-        if (level === 'custom') {
-            customGroup.classList.remove('hidden');
-        } else {
-            customGroup.classList.add('hidden');
-        }
-    }
-
     async function reducePDFSize() {
         const fileInput = document.getElementById('pdfFile');
         let customName = document.getElementById('pdfName').value.trim() || "Compressed_Document";
@@ -211,33 +201,51 @@
         }
 
         const file = fileInput.files[0];
+        
+        // Quality setting based on selection
+        let quality = 0.6; // medium
+        let scale = 1.2;
+        if (level === 'minimal') { quality = 0.85; scale = 1.5; }
+        if (level === 'high') { quality = 0.3; scale = 0.8; }
+        if (level === 'custom') { quality = 0.4; scale = 1.0; }
 
         try {
             const arrayBuffer = await file.arrayBuffer();
-            const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+            const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+            const pdfDoc = await loadingTask.promise;
+            const numPages = pdfDoc.numPages;
 
-            // Basic metadata cleaning and saving to optimize size via pdf-lib
-            const compressedPdfBytes = await pdfDoc.save({ useObjectStreams: true });
+            const { jsPDF } = window.jspdf;
+            const newPdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-            // Trigger download
-            const blob = new Blob([compressedPdfBytes], { type: 'application/pdf' });
-            
-            // Optional check for custom size warning if file is larger than target
-            if (level === 'custom') {
-                const targetKB = parseInt(document.getElementById('targetSizeKB').value);
-                if (targetKB && (blob.size / 1024) > targetKB) {
-                    console.log("Note: Output size is optimized as much as possible for browser processing.");
+            for (let i = 1; i <= numPages; i++) {
+                const page = await pdfDoc.getPage(i);
+                const viewport = page.getViewport({ scale: scale });
+                
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                await page.render({ canvasContext: context, viewport: viewport }).promise;
+                
+                const imgData = canvas.toDataURL('image/jpeg', quality);
+
+                if (i > 1) {
+                    newPdf.addPage();
                 }
+
+                // Add compressed image to A4 PDF page
+                const imgWidth = 210; // A4 width in mm
+                const imgHeight = (viewport.height * imgWidth) / viewport.width;
+                newPdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight > 297 ? 297 : imgHeight);
             }
 
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `${customName}.pdf`;
-            link.click();
+            newPdf.save(`${customName}.pdf`);
 
         } catch (error) {
             console.error("Error reducing PDF size:", error);
-            alert("An error occurred while processing the PDF file.");
+            alert("An error occurred while compressing the PDF file.");
         }
     }
 </script>
