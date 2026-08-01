@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Card Print Studio - Your Suvidha Centre</title>
+    <!-- jsPDF for PDF Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- pdf.js for rendering uploaded PDF cards -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    </script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        header {
+            background: #ffffff;
+            padding: 20px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 5px;
+        }
+        .logo-container svg {
+            width: 35px;
+            height: 35px;
+            fill: #2c3e50;
+        }
+        h1 {
+            font-size: 22px;
+            color: #2c3e50;
+        }
+        .powered-by {
+            font-size: 12px;
+            color: #7f8c8d;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        main {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 30px 20px;
+        }
+        .container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            max-width: 500px;
+            width: 100%;
+            border: 1px solid #e9ecef;
+        }
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #495057;
+            font-size: 14px;
+        }
+        select, input[type="file"], input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            background: #fff;
+        }
+        select:focus, input:focus {
+            border-color: #4CAF50;
+        }
+        .hidden {
+            display: none;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 15px;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            text-decoration: none;
+            color: #3498db;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        footer {
+            background: #2c3e50;
+            color: #ecf0f1;
+            text-align: center;
+            padding: 20px;
+            font-size: 14px;
+            margin-top: auto;
+        }
+        footer p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-container">
+            <svg viewBox="0 0 24 24">
+                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 10h2v7H7zm4-3h2v10h-2zm4 5h2v5h-2z"/>
+            </svg>
+            <h1>Your Suvidha Centre</h1>
+        </div>
+        <div class="powered-by">POWERED BY GILL TECH SOLUTIONS</div>
+    </header>
+
+    <main>
+        <div class="container">
+            <h2>Card Print Studio</h2>
+            
+            <div class="form-group">
+                <label for="cardType">Select Card Type:</label>
+                <select id="cardType" onchange="handleCardSelection()">
+                    <option value="aadhaar">Aadhaar Card (Supports Locked/Protected PDF)</option>
+                    <option value="ayushman">Ayushman Card</option>
+                    <option value="eshram">e-Shram Card</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="outputName">Printable File Name:</label>
+                <input type="text" id="outputName" value="Printable_Card">
+            </div>
+
+            <div class="form-group" id="passwordGroup">
+                <label for="pdfPassword">PDF Password (If Locked):</label>
+                <input type="password" id="pdfPassword" placeholder="Enter 8-digit password">
+            </div>
+
+            <div class="form-group">
+                <label for="cardFile">Upload Card File (PDF or Image):</label>
+                <input type="file" id="cardFile" accept="application/pdf,image/*">
+            </div>
+
+            <button onclick="generatePrintLayout()">Generate Printable PDF</button>
+            <a href="index.html" class="back-link">&larr; Back to Home</a>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Your Suvidha Centre. All rights reserved.</p>
+        <p>Powered by <strong>Gill Tech Solutions</strong></p>
+    </footer>
+
+<script>
+    function handleCardSelection() {
+        const cardType = document.getElementById('cardType').value;
+        const passwordGroup = document.getElementById('passwordGroup');
+        
+        // Sirf Aadhaar ke liye password field zaroori ho sakti hai
+        if (cardType === 'aadhaar') {
+            passwordGroup.classList.remove('hidden');
+        } else {
+            passwordGroup.classList.add('hidden');
+        }
+    }
+
+    async function generatePrintLayout() {
+        const cardType = document.getElementById('cardType').value;
+        const fileInput = document.getElementById('cardFile');
+        const password = document.getElementById('pdfPassword').value;
+        let outputName = document.getElementById('outputName').value.trim() || "Printable_Card";
+        outputName = outputName.replace(/\s+/g, '_');
+
+        if (fileInput.files.length === 0) {
+            alert("Kripya pehle card ki file (PDF ya Image) upload karein!");
+            return;
+        }
+
+        const file = fileInput.files[0];
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+        try {
+            if (file.type === 'application/pdf') {
+                const arrayBuffer = await file.arrayBuffer();
+                let loadingTask;
+                
+                try {
+                    loadingTask = pdfjsLib.getDocument({ data: arrayBuffer, password: password });
+                    const pdfDoc = await loadingTask.promise;
+                    
+                    // Pehla page render karke card layout generate karna
+                    const page = await pdfDoc.getPage(1);
+                    const viewport = page.getViewport({ scale: 2.0 });
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+
+                    await page.render({ canvasContext: context, viewport: viewport }).promise;
+                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+                    // A4 page par standard PVC card size formatting (Front & Back alignment)
+                    doc.addImage(imgData, 'JPEG', 55, 20, 100, 63);
+                    
+                    // Agar multi-page PDF hai toh second page (back side) bhi add kar sakte hain
+                    if (pdfDoc.numPages > 1) {
+                        const pageBack = await pdfDoc.getPage(2);
+                        const canvasBack = document.createElement('canvas');
+                        const ctxBack = canvasBack.getContext('2d');
+                        canvasBack.height = viewport.height;
+                        canvasBack.width = viewport.width;
+                        await pageBack.render({ canvasContext: ctxBack, viewport: viewport }).promise;
+                        const imgDataBack = canvasBack.toDataURL('image/jpeg', 0.95);
+                        
+                        doc.addImage(imgDataBack, 'JPEG', 55, 95, 100, 63);
+                    }
+
+                } catch (err) {
+                    alert("PDF password galat ho sakta hai ya file locked hai. Kripya sahi password enter karein.");
+                    return;
+                }
+
+            } else {
+                // Agar image file upload ki hai
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    doc.addImage(e.target.result, 'JPEG', 55, 20, 100, 63);
+                    doc.save(`${outputName}.pdf`);
+                };
+                reader.readAsDataURL(file);
+                return;
+            }
+
+            doc.save(`${outputName}.pdf`);
+
+        } catch (error) {
+            console.error("Layout generation error:", error);
+            alert("Printable layout generate karne mein kuch samasya aayi.");
+        }
+    }
+</script>
+
+</body>
+</html>
