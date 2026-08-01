@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -65,7 +65,7 @@
             padding: 30px;
             border-radius: 8px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            max-width: 500px;
+            max-width: 550px;
             width: 100%;
             border: 1px solid #e9ecef;
         }
@@ -85,7 +85,7 @@
             color: #495057;
             font-size: 14px;
         }
-        select, input[type="file"], input[type="text"], input[type="password"] {
+        select, input[type="file"], input[type="text"], input[type="password"], input[type="range"] {
             width: 100%;
             padding: 10px;
             box-sizing: border-box;
@@ -100,6 +100,19 @@
         }
         .hidden {
             display: none;
+        }
+        .preview-box {
+            text-align: center;
+            margin: 15px 0;
+            background: #f1f3f5;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px dashed #ced4da;
+        }
+        .preview-box canvas {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ccc;
         }
         button {
             background-color: #4CAF50;
@@ -156,7 +169,7 @@
 
     <main>
         <div class="container">
-            <h2>Card Print Studio</h2>
+            <h2>Card Print Studio (Manual Adjust)</h2>
             
             <div class="form-group">
                 <label for="cardType">Select Card Type:</label>
@@ -179,7 +192,19 @@
 
             <div class="form-group">
                 <label for="cardFile">Upload Card File (PDF or Image):</label>
-                <input type="file" id="cardFile" accept="application/pdf,image/*">
+                <input type="file" id="cardFile" accept="application/pdf,image/*" onchange="previewCard()">
+            </div>
+
+            <!-- Manual Adjustment Sliders for Crop Position -->
+            <div class="form-group" id="manualControls" style="display:none;">
+                <label>Vertical Crop Position (Adjust if needed):</label>
+                <input type="range" id="cropRange" min="0" max="80" value="30" oninput="previewCard()">
+                <small style="color:#6c757d;">Slider ko aage-peeche karke card ki position set karein.</small>
+            </div>
+
+            <div class="preview-box" id="previewContainer" style="display:none;">
+                <label>Front Card Preview:</label>
+                <canvas id="cropPreviewCanvas"></canvas>
             </div>
 
             <button onclick="generatePrintLayout()">Generate Printable PDF</button>
@@ -193,6 +218,8 @@
     </footer>
 
 <script>
+    let globalPdfDoc = null;
+
     function handleCardSelection() {
         const cardType = document.getElementById('cardType').value;
         const passwordGroup = document.getElementById('passwordGroup');
@@ -203,10 +230,80 @@
         }
     }
 
+    async function previewCard() {
+        const fileInput = document.getElementById('cardFile');
+        const password = document.getElementById('pdfPassword').value;
+        const cardType = document.getElementById('cardType').value;
+        const previewContainer = document.getElementById('previewContainer');
+        const manualControls = document.getElementById('manualControls');
+
+        if (fileInput.files.length === 0) return;
+
+        const file = fileInput.files[0];
+
+        try {
+            if (file.type === 'application/pdf') {
+                const arrayBuffer = await file.arrayBuffer();
+                try {
+                    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer, password: password });
+                    globalPdfDoc = await loadingTask.promise;
+                } catch (err) {
+                    return; // Password error can be handled during final generation
+                }
+
+                manualControls.style.display = 'block';
+                previewContainer.style.display = 'block';
+                renderPreviewCanvas();
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function renderPreviewCanvas() {
+        if (!globalPdfDoc) return;
+        const cardType = document.getElementById('cardType').value;
+        const rangeVal = document.getElementById('cropRange').value;
+
+        const page = await globalPdfDoc.getPage(1);
+        const viewport = page.getViewport({ scale: 1.5 });
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+        let cropWidth, cropHeight, startX, startY;
+        const halfWidth = canvas.width / 2;
+
+        if (cardType === 'aadhaar') {
+            cropWidth = halfWidth * 0.92;
+            cropHeight = canvas.height * 0.35;
+            startX = halfWidth * 0.04;
+            // Range value controls vertical starting position dynamically
+            startY = (canvas.height * (rangeVal / 100));
+        } else {
+            cropWidth = canvas.width * 0.85;
+            cropHeight = canvas.height * 0.40;
+            startX = (canvas.width - cropWidth) / 2;
+            startY = (canvas.height * (rangeVal / 100));
+        }
+
+        const previewCanvas = document.getElementById('cropPreviewCanvas');
+        previewCanvas.width = cropWidth;
+        previewCanvas.height = cropHeight;
+        const pCtx = previewCanvas.getContext('2d');
+        pCtx.drawImage(canvas, startX, startY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+    }
+
+    document.getElementById('cropRange').addEventListener('input', renderPreviewCanvas);
+
     async function generatePrintLayout() {
         const fileInput = document.getElementById('cardFile');
         const password = document.getElementById('pdfPassword').value;
         const cardType = document.getElementById('cardType').value;
+        const rangeVal = document.getElementById('cropRange').value;
         let outputName = document.getElementById('outputName').value.trim() || "Printable_Card";
         outputName = outputName.replace(/\s+/g, '_');
 
@@ -231,7 +328,7 @@
                     return;
                 }
 
-                async function getCardImage(pageNumber) {
+                async function getCardImage(pageNumber, isBack = false) {
                     const page = await pdfDoc.getPage(pageNumber);
                     const viewport = page.getViewport({ scale: 3.0 });
                     const canvas = document.createElement('canvas');
@@ -244,41 +341,40 @@
                     const cropCanvas = document.createElement('canvas');
                     const cropCtx = cropCanvas.getContext('2d');
                     
+                    const halfWidth = canvas.width / 2;
                     let cropWidth, cropHeight, startX, startY;
 
                     if (cardType === 'aadhaar') {
-                        // Official e-Aadhaar PDF ke liye exact middle/lower section jahan actual card hota hai
-                        cropWidth = canvas.width * 0.72;
-                        cropHeight = canvas.height * 0.32;
-                        startX = (canvas.width - cropWidth) / 2;
-                        startY = canvas.height * 0.38; // Adjusted down to capture the actual card box
+                        cropWidth = halfWidth * 0.92;
+                        cropHeight = canvas.height * 0.35;
+                        startX = isBack ? halfWidth + (halfWidth * 0.04) : halfWidth * 0.04;
+                        startY = (canvas.height * (rangeVal / 100));
                     } else {
-                        // Baaki cards ke liye standard crop
-                        cropWidth = canvas.width * 0.80;
+                        cropWidth = canvas.width * 0.85;
                         cropHeight = canvas.height * 0.40;
                         startX = (canvas.width - cropWidth) / 2;
-                        startY = canvas.height * 0.10;
+                        startY = (canvas.height * (rangeVal / 100));
                     }
 
                     cropCanvas.width = cropWidth;
                     cropCanvas.height = cropHeight;
-
                     cropCtx.drawImage(canvas, startX, startY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
                     return cropCanvas.toDataURL('image/jpeg', 1.0);
                 }
 
                 const cardWidth = 85.6;
                 const cardHeight = 54;
-                const X_Position = (210 - cardWidth) / 2; // Centered horizontally
+                const X_Position = (210 - cardWidth) / 2;
 
-                // Front Side - A4 page ke lower-middle area mein
-                const imgData1 = await getCardImage(1);
-                doc.addImage(imgData1, 'JPEG', X_Position, 160, cardWidth, cardHeight);
+                const imgData1 = await getCardImage(1, false);
+                doc.addImage(imgData1, 'JPEG', X_Position, 140, cardWidth, cardHeight);
 
-                // Back Side - A4 page ke bilkul bottom par
-                if (pdfDoc.numPages > 1) {
-                    const imgData2 = await getCardImage(2);
-                    doc.addImage(imgData2, 'JPEG', X_Position, 220, cardWidth, cardHeight);
+                if (cardType === 'aadhaar') {
+                    const imgData2 = await getCardImage(1, true);
+                    doc.addImage(imgData2, 'JPEG', X_Position, 205, cardWidth, cardHeight);
+                } else if (pdfDoc.numPages > 1) {
+                    const imgData2 = await getCardImage(2, false);
+                    doc.addImage(imgData2, 'JPEG', X_Position, 205, cardWidth, cardHeight);
                 }
 
             } else {
@@ -287,7 +383,7 @@
                     const cardWidth = 85.6;
                     const cardHeight = 54;
                     const X_Position = (210 - cardWidth) / 2;
-                    doc.addImage(e.target.result, 'JPEG', X_Position, 220, cardWidth, cardHeight);
+                    doc.addImage(e.target.result, 'JPEG', X_Position, 205, cardWidth, cardHeight);
                     doc.save(`${outputName}.pdf`);
                 };
                 reader.readAsDataURL(file);
@@ -305,3 +401,5 @@
 
 </body>
 </html>
+                       
+            
