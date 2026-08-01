@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merge PDF - Your Suvidha Centre</title>
+    <!-- pdf-lib Library for merging PDFs -->
+    <script src="https://unpkg.com/pdf-lib@1.4.0/dist/pdf-lib.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        header {
+            background: #ffffff;
+            padding: 20px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 5px;
+        }
+        .logo-container svg {
+            width: 35px;
+            height: 35px;
+            fill: #2c3e50;
+        }
+        h1 {
+            font-size: 22px;
+            color: #2c3e50;
+        }
+        .powered-by {
+            font-size: 12px;
+            color: #7f8c8d;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        main {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 30px 20px;
+        }
+        .container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            max-width: 500px;
+            width: 100%;
+            border: 1px solid #e9ecef;
+        }
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #495057;
+            font-size: 14px;
+        }
+        input[type="file"], input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input[type="file"]:focus, input[type="text"]:focus {
+            border-color: #4CAF50;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 10px;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            text-decoration: none;
+            color: #3498db;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        footer {
+            background: #2c3e50;
+            color: #ecf0f1;
+            text-align: center;
+            padding: 20px;
+            font-size: 14px;
+            margin-top: auto;
+        }
+        footer p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Professional Header -->
+    <header>
+        <div class="logo-container">
+            <svg viewBox="0 0 24 24">
+                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 10h2v7H7zm4-3h2v10h-2zm4 5h2v5h-2z"/>
+            </svg>
+            <h1>Your Suvidha Centre</h1>
+        </div>
+        <div class="powered-by">POWERED BY GILL TECH SOLUTIONS</div>
+    </header>
+
+    <!-- Main Form Section -->
+    <main>
+        <div class="container">
+            <h2>Merge PDF Tool</h2>
+            
+            <div class="form-group">
+                <label for="pdfName">Merged PDF File Name:</label>
+                <input type="text" id="pdfName" value="Merged_Document">
+            </div>
+
+            <div class="form-group">
+                <label for="pdfFiles">Select PDF Files (Multiple):</label>
+                <input type="file" id="pdfFiles" accept="application/pdf" multiple>
+            </div>
+
+            <button onclick="mergePDFs()">Merge & Download PDF</button>
+            <a href="index.html" class="back-link">&larr; Back to Home</a>
+        </div>
+    </main>
+
+    <!-- Professional Footer -->
+    <footer>
+        <p>&copy; 2026 Your Suvidha Centre. All rights reserved.</p>
+        <p>Powered by <strong>Gill Tech Solutions</strong></p>
+    </footer>
+
+<script>
+    async function mergePDFs() {
+        const fileInput = document.getElementById('pdfFiles');
+        let customName = document.getElementById('pdfName').value.trim() || "Merged_Document";
+        customName = customName.replace(/\s+/g, '_');
+
+        if (fileInput.files.length < 2) {
+            alert("Please select at least 2 PDF files to merge!");
+            return;
+        }
+
+        try {
+            const mergedPdf = await PDFLib.PDFDocument.create();
+
+            for (let i = 0; i < fileInput.files.length; i++) {
+                const file = fileInput.files[i];
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await PDFLib.PDFDocument.load(arrayBuffer);
+                const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                copiedPages.forEach((page) => {
+                    mergedPdf.addPage(page);
+                });
+            }
+
+            const mergedPdfFileBytes = await mergedPdf.save();
+            
+            // Trigger download
+            const blob = new Blob([mergedPdfFileBytes], { type: 'application/pdf' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `${customName}.pdf`;
+            link.click();
+
+        } catch (error) {
+            console.error("Error merging PDFs:", error);
+            alert("An error occurred while merging the PDF files.");
+        }
+    }
+</script>
+
+</body>
+</html>
