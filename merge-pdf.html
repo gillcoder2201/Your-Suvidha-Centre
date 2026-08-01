@@ -88,15 +88,10 @@
             border-radius: 6px;
             font-size: 14px;
             outline: none;
-            transition: border-color 0.2s;
         }
-        input[type="file"]:focus, input[type="text"]:focus {
-            border-color: #4CAF50;
-        }
-        /* Draggable List Styles */
         #fileList {
             list-style: none;
-            max-height: 200px;
+            max-height: 250px;
             overflow-y: auto;
             margin-top: 10px;
             border: 1px solid #ced4da;
@@ -105,17 +100,18 @@
             background: #fdfdfd;
         }
         .file-item {
-            padding: 10px;
+            padding: 10px 12px;
             background: #ffffff;
-            margin-bottom: 5px;
+            margin-bottom: 6px;
             border: 1px solid #e9ecef;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: grab;
             display: flex;
             align-items: center;
             justify-content: space-between;
             font-size: 14px;
             user-select: none;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
         }
         .file-item:active {
             cursor: grabbing;
@@ -124,16 +120,37 @@
             opacity: 0.4;
             background: #e9ecef;
         }
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            overflow: hidden;
+        }
+        .pdf-icon {
+            width: 30px;
+            height: 35px;
+            background: #e74c3c;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
         .file-item span {
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            max-width: 400px;
+            max-width: 280px;
+            font-weight: 500;
+            color: #333;
         }
         .drag-handle {
             color: #adb5bd;
             font-weight: bold;
-            margin-right: 8px;
+            font-size: 16px;
         }
         button {
             background-color: #4CAF50;
@@ -178,7 +195,6 @@
 </head>
 <body>
 
-    <!-- Professional Header -->
     <header>
         <div class="logo-container">
             <svg viewBox="0 0 24 24">
@@ -189,7 +205,6 @@
         <div class="powered-by">POWERED BY GILL TECH SOLUTIONS</div>
     </header>
 
-    <!-- Main Form Section -->
     <main>
         <div class="container">
             <h2>Merge PDF Tool</h2>
@@ -214,7 +229,6 @@
         </div>
     </main>
 
-    <!-- Professional Footer -->
     <footer>
         <p>&copy; 2026 Your Suvidha Centre. All rights reserved.</p>
         <p>Powered by <strong>Gill Tech Solutions</strong></p>
@@ -224,8 +238,7 @@
     let selectedFilesArray = [];
 
     function handleFileSelection(event) {
-        const files = Array.from(event.target.files);
-        selectedFilesArray = files;
+        selectedFilesArray = Array.from(event.target.files);
         renderFileList();
     }
 
@@ -242,13 +255,16 @@
                 li.draggable = true;
                 li.dataset.index = index;
 
-                li.innerHTML = `<span style="display:flex; align-items:center;"><span class="drag-handle">&#9776;</span> ${file.name}</span> <small style="color:#6c757d;">#${index + 1}</small>`;
+                li.innerHTML = `
+                    <div class="file-info">
+                        <span class="drag-handle">&#9776;</span>
+                        <div class="pdf-icon">PDF</div>
+                        <span>${file.name}</span>
+                    </div>
+                    <small style="color:#6c757d; font-weight:600;">#${index + 1}</small>
+                `;
 
-                // Drag and Drop Events
-                li.addEventListener('dragstart', () => {
-                    li.classList.add('dragging');
-                });
-
+                li.addEventListener('dragstart', () => li.classList.add('dragging'));
                 li.addEventListener('dragend', () => {
                     li.classList.remove('dragging');
                     updateFilesOrder();
@@ -313,14 +329,10 @@
                 const arrayBuffer = await file.arrayBuffer();
                 const pdf = await PDFLib.PDFDocument.load(arrayBuffer);
                 const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-                copiedPages.forEach((page) => {
-                    mergedPdf.addPage(page);
-                });
+                copiedPages.forEach((page) => mergedPdf.addPage(page));
             }
 
             const mergedPdfFileBytes = await mergedPdf.save();
-            
-            // Trigger download
             const blob = new Blob([mergedPdfFileBytes], { type: 'application/pdf' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
