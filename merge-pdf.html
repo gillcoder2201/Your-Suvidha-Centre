@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Merge PDF - Your Suvidha Centre</title>
-    <!-- pdf-lib Library for merging PDFs -->
-    <script src="https://unpkg.com/pdf-lib@1.4.0/dist/pdf-lib.min.js"></script>
+    <title>Reduce Image Size - Your Suvidha Centre</title>
     <style>
         * {
             box-sizing: border-box;
@@ -80,7 +78,7 @@
             color: #495057;
             font-size: 14px;
         }
-        input[type="file"], input[type="text"] {
+        input[type="file"], input[type="text"], select {
             width: 100%;
             padding: 10px;
             box-sizing: border-box;
@@ -89,9 +87,21 @@
             font-size: 14px;
             outline: none;
             transition: border-color 0.2s;
+            background: #fff;
         }
-        input[type="file"]:focus, input[type="text"]:focus {
+        input[type="file"]:focus, input[type="text"]:focus, select:focus {
             border-color: #4CAF50;
+        }
+        .preview-box {
+            text-align: center;
+            margin: 15px 0;
+        }
+        .preview-box img {
+            max-width: 100%;
+            max-height: 150px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            display: none;
         }
         button {
             background-color: #4CAF50;
@@ -150,19 +160,32 @@
     <!-- Main Form Section -->
     <main>
         <div class="container">
-            <h2>Merge PDF Tool</h2>
+            <h2>Reduce Image Size</h2>
             
             <div class="form-group">
-                <label for="pdfName">Merged PDF File Name:</label>
-                <input type="text" id="pdfName" value="Merged_Document">
+                <label for="imageName">Compressed Image Name:</label>
+                <input type="text" id="imageName" value="Reduced_Image">
             </div>
 
             <div class="form-group">
-                <label for="pdfFiles">Select PDF Files (Multiple):</label>
-                <input type="file" id="pdfFiles" accept="application/pdf" multiple>
+                <label for="imageFile">Select Image:</label>
+                <input type="file" id="imageFile" accept="image/*" onchange="previewImage(event)">
             </div>
 
-            <button onclick="mergePDFs()">Merge & Download PDF</button>
+            <div class="preview-box">
+                <img id="imgPreview" alt="Image Preview">
+            </div>
+
+            <div class="form-group">
+                <label for="qualitySelect">Compression Quality:</label>
+                <select id="qualitySelect">
+                    <option value="0.8">Low Compression (Better Quality)</option>
+                    <option value="0.5" selected>Medium Compression (Recommended)</option>
+                    <option value="0.3">High Compression (Smallest Size)</option>
+                </select>
+            </div>
+
+            <button onclick="compressImage()">Reduce & Download Image</button>
             <a href="index.html" class="back-link">&larr; Back to Home</a>
         </div>
     </main>
@@ -174,42 +197,54 @@
     </footer>
 
 <script>
-    async function mergePDFs() {
-        const fileInput = document.getElementById('pdfFiles');
-        let customName = document.getElementById('pdfName').value.trim() || "Merged_Document";
-        customName = customName.replace(/\s+/g, '_');
+    function previewImage(event) {
+        const reader = new FileReader();
+        reader.onload = function(){
+            const output = document.getElementById('imgPreview');
+            output.src = reader.result;
+            output.style.display = 'block';
+        };
+        reader.readAsDataURL(event.target.files[0]);
+    }
 
-        if (fileInput.files.length < 2) {
-            alert("Please select at least 2 PDF files to merge!");
+    function compressImage() {
+        const fileInput = document.getElementById('imageFile');
+        let customName = document.getElementById('imageName').value.trim() || "Reduced_Image";
+        customName = customName.replace(/\s+/g, '_');
+        const quality = parseFloat(document.getElementById('qualitySelect').value);
+
+        if (fileInput.files.length === 0) {
+            alert("Please select an image first!");
             return;
         }
 
-        try {
-            const mergedPdf = await PDFLib.PDFDocument.create();
+        const file = fileInput.files[0];
+        const reader = new FileReader();
 
-            for (let i = 0; i < fileInput.files.length; i++) {
-                const file = fileInput.files[i];
-                const arrayBuffer = await file.arrayBuffer();
-                const pdf = await PDFLib.PDFDocument.load(arrayBuffer);
-                const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-                copiedPages.forEach((page) => {
-                    mergedPdf.addPage(page);
-                });
-            }
+        reader.onload = function (event) {
+            const img = new Image();
+            img.src = event.target.result;
 
-            const mergedPdfFileBytes = await mergedPdf.save();
-            
-            // Trigger download
-            const blob = new Blob([mergedPdfFileBytes], { type: 'application/pdf' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `${customName}.pdf`;
-            link.click();
+            img.onload = function () {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
 
-        } catch (error) {
-            console.error("Error merging PDFs:", error);
-            alert("An error occurred while merging the PDF files.");
-        }
+                // Keep dimensions same or resize if needed
+                canvas.width = img.width;
+                canvas.height = img.height;
+
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                canvas.toBlob(function (blob) {
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `${customName}.jpg`;
+                    link.click();
+                }, 'image/jpeg', quality);
+            };
+        };
+
+        reader.readAsDataURL(file);
     }
 </script>
 
