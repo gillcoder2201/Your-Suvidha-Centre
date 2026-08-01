@@ -196,8 +196,6 @@
     function handleCardSelection() {
         const cardType = document.getElementById('cardType').value;
         const passwordGroup = document.getElementById('passwordGroup');
-        
-        // Sirf Aadhaar ke liye password field zaroori ho sakti hai
         if (cardType === 'aadhaar') {
             passwordGroup.classList.remove('hidden');
         } else {
@@ -206,14 +204,13 @@
     }
 
     async function generatePrintLayout() {
-        const cardType = document.getElementById('cardType').value;
         const fileInput = document.getElementById('cardFile');
         const password = document.getElementById('pdfPassword').value;
         let outputName = document.getElementById('outputName').value.trim() || "Printable_Card";
         outputName = outputName.replace(/\s+/g, '_');
 
         if (fileInput.files.length === 0) {
-            alert("Kripya pehle card ki file (PDF ya Image) upload karein!");
+            alert("Kripya pehle card ki file upload karein!");
             return;
         }
 
@@ -224,49 +221,54 @@
         try {
             if (file.type === 'application/pdf') {
                 const arrayBuffer = await file.arrayBuffer();
-                let loadingTask;
-                
+                let pdfDoc;
                 try {
-                    loadingTask = pdfjsLib.getDocument({ data: arrayBuffer, password: password });
-                    const pdfDoc = await loadingTask.promise;
-                    
-                    // Pehla page render karke card layout generate karna
-                    const page = await pdfDoc.getPage(1);
-                    const viewport = page.getViewport({ scale: 2.0 });
-                    const canvas = document.createElement('canvas');
-                    const context = canvas.getContext('2d');
-                    canvas.height = viewport.height;
-                    canvas.width = viewport.width;
-
-                    await page.render({ canvasContext: context, viewport: viewport }).promise;
-                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
-
-                    // A4 page par standard PVC card size formatting (Front & Back alignment)
-                    doc.addImage(imgData, 'JPEG', 55, 20, 100, 63);
-                    
-                    // Agar multi-page PDF hai toh second page (back side) bhi add kar sakte hain
-                    if (pdfDoc.numPages > 1) {
-                        const pageBack = await pdfDoc.getPage(2);
-                        const canvasBack = document.createElement('canvas');
-                        const ctxBack = canvasBack.getContext('2d');
-                        canvasBack.height = viewport.height;
-                        canvasBack.width = viewport.width;
-                        await pageBack.render({ canvasContext: ctxBack, viewport: viewport }).promise;
-                        const imgDataBack = canvasBack.toDataURL('image/jpeg', 0.95);
-                        
-                        doc.addImage(imgDataBack, 'JPEG', 55, 95, 100, 63);
-                    }
-
+                    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer, password: password });
+                    pdfDoc = await loadingTask.promise;
                 } catch (err) {
-                    alert("PDF password galat ho sakta hai ya file locked hai. Kripya sahi password enter karein.");
+                    alert("PDF password galat ho sakta hai ya file locked hai.");
                     return;
                 }
 
+                async function getCardImage(pageNumber) {
+                    const page = await pdfDoc.getPage(pageNumber);
+                    const viewport = page.getViewport({ scale: 2.5 });
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+
+                    await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+                    const cropCanvas = document.createElement('canvas');
+                    const cropCtx = cropCanvas.getContext('2d');
+                    
+                    let cropWidth = canvas.width * 0.85;
+                    let cropHeight = canvas.height * 0.45;
+                    let startX = (canvas.width - cropWidth) / 2;
+                    let startY = canvas.height * 0.08;
+
+                    cropCanvas.width = cropWidth;
+                    cropCanvas.height = cropHeight;
+
+                    cropCtx.drawImage(canvas, startX, startY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+                    return cropCanvas.toDataURL('image/jpeg', 0.95);
+                }
+
+                // Front Side - Page ke neeche wale hisse mein set kiya gaya hai (Y: 140mm)
+                const imgData1 = await getCardImage(1);
+                doc.addImage(imgData1, 'JPEG', 55, 140, 100, 63);
+
+                // Back Side - Page ke bilkul bottom par set kiya gaya hai (Y: 215mm)
+                if (pdfDoc.numPages > 1) {
+                    const imgData2 = await getCardImage(2);
+                    doc.addImage(imgData2, 'JPEG', 55, 215, 100, 63);
+                }
+
             } else {
-                // Agar image file upload ki hai
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    doc.addImage(e.target.result, 'JPEG', 55, 20, 100, 63);
+                    doc.addImage(e.target.result, 'JPEG', 55, 215, 100, 63);
                     doc.save(`${outputName}.pdf`);
                 };
                 reader.readAsDataURL(file);
@@ -276,8 +278,8 @@
             doc.save(`${outputName}.pdf`);
 
         } catch (error) {
-            console.error("Layout generation error:", error);
-            alert("Printable layout generate karne mein kuch samasya aayi.");
+            console.error("Error:", error);
+            alert("Layout generate karne mein samasya aayi.");
         }
     }
 </script>
