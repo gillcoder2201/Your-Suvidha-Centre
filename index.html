@@ -45,7 +45,7 @@
             font-weight: bold;
             color: #555;
         }
-        input[type="file"] {
+        input[type="file"], input[type="text"] {
             width: 100%;
             padding: 8px;
             box-sizing: border-box;
@@ -78,6 +78,11 @@
     <h2>Your Suvidha Centre</h2>
     <div class="powered-by">Powered by Gill Tech Solutions</div>
     
+    <div class="form-group">
+        <label for="pdfName">PDF File Ka Naam (Optional):</label>
+        <input type="text" id="pdfName" placeholder="Jaise: Customer_Aadhaar" value="Aadhaar_Document">
+    </div>
+
     <div class="form-group">
         <label for="frontImage">Aadhaar Front Image:</label>
         <input type="file" id="frontImage" accept="image/*">
@@ -113,10 +118,19 @@
         const backInput = document.getElementById('backImage').files[0];
         const signGroup = document.getElementById('signGroup');
         const signInput = document.getElementById('signImage').files[0];
+        let customName = document.getElementById('pdfName').value.trim();
 
         if (!frontInput || !backInput) {
             alert("Kripya kam se kam Aadhaar ka Front aur Back image zaroor select karein!");
             return;
+        }
+
+        // Agar user ne naam nahi diya toh default naam set ho jayega
+        if (!customName) {
+            customName = "Aadhaar_Document";
+        } else {
+            // Agar naam mein spaces hain toh unhe underscore se replace kar dena accha rehta hai
+            customName = customName.replace(/\s+/g, '_');
         }
 
         const { jsPDF } = window.jspdf;
@@ -151,8 +165,8 @@
             let backYCoord = (!signGroup.classList.contains('hidden') && signInput) ? 130 : 100;
             doc.addImage(backData, 'JPEG', 55, backYCoord, 100, 63);
 
-            // Save PDF
-            doc.save("Your_Suvidha_Centre_Aadhaar.pdf");
+            // Save PDF with custom name
+            doc.save(`${customName}.pdf`);
 
         } catch (error) {
             console.error("PDF generation error:", error);
