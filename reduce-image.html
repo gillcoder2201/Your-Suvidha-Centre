@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reduce Image Size - Your Suvidha Centre</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        header {
+            background: #ffffff;
+            padding: 20px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 5px;
+        }
+        .logo-container svg {
+            width: 35px;
+            height: 35px;
+            fill: #2c3e50;
+        }
+        h1 {
+            font-size: 22px;
+            color: #2c3e50;
+        }
+        .powered-by {
+            font-size: 12px;
+            color: #7f8c8d;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        main {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 30px 20px;
+        }
+        .container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            max-width: 500px;
+            width: 100%;
+            border: 1px solid #e9ecef;
+        }
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #495057;
+            font-size: 14px;
+        }
+        input[type="file"], input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            background: #fff;
+        }
+        input:focus {
+            border-color: #4CAF50;
+        }
+        .preview-box {
+            text-align: center;
+            margin: 15px 0;
+        }
+        .preview-box img {
+            max-width: 100%;
+            max-height: 150px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            display: none;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 15px;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            text-decoration: none;
+            color: #3498db;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        footer {
+            background: #2c3e50;
+            color: #ecf0f1;
+            text-align: center;
+            padding: 20px;
+            font-size: 14px;
+            margin-top: auto;
+        }
+        footer p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-container">
+            <svg viewBox="0 0 24 24">
+                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 10h2v7H7zm4-3h2v10h-2zm4 5h2v5h-2z"/>
+            </svg>
+            <h1>Your Suvidha Centre</h1>
+        </div>
+        <div class="powered-by">POWERED BY GILL TECH SOLUTIONS</div>
+    </header>
+
+    <main>
+        <div class="container">
+            <h2>Reduce Image Size</h2>
+            
+            <div class="form-group">
+                <label for="imageName">Compressed Image Name:</label>
+                <input type="text" id="imageName" value="Reduced_Image">
+            </div>
+
+            <div class="form-group">
+                <label for="imageFile">Select Image:</label>
+                <input type="file" id="imageFile" accept="image/*" onchange="previewImage(event)">
+            </div>
+
+            <div class="preview-box">
+                <img id="imgPreview" alt="Image Preview">
+            </div>
+
+            <div class="form-group">
+                <label for="targetSizeKB">Target Size (in KB):</label>
+                <input type="number" id="targetSizeKB" placeholder="e.g. 50" min="5" value="50">
+            </div>
+
+            <button onclick="compressImageToTarget()">Reduce & Download Image</button>
+            <a href="index.html" class="back-link">&larr; Back to Home</a>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Your Suvidha Centre. All rights reserved.</p>
+        <p>Powered by <strong>Gill Tech Solutions</strong></p>
+    </footer>
+
+<script>
+    function previewImage(event) {
+        const reader = new FileReader();
+        reader.onload = function(){
+            const output = document.getElementById('imgPreview');
+            output.src = reader.result;
+            output.style.display = 'block';
+        };
+        reader.readAsDataURL(event.target.files[0]);
+    }
+
+    async function compressImageToTarget() {
+        const fileInput = document.getElementById('imageFile');
+        let customName = document.getElementById('imageName').value.trim() || "Reduced_Image";
+        customName = customName.replace(/\s+/g, '_');
+        const targetKB = parseFloat(document.getElementById('targetSizeKB').value);
+
+        if (fileInput.files.length === 0) {
+            alert("Please select an image first!");
+            return;
+        }
+
+        if (!targetKB || targetKB <= 0) {
+            alert("Please enter a valid target size in KB!");
+            return;
+        }
+
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+
+        reader.onload = function (event) {
+            const img = new Image();
+            img.src = event.target.result;
+
+            img.onload = function () {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                let width = img.width;
+                let height = img.height;
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Iterative binary search / loop for hitting target size closely using quality adjustment
+                let minQuality = 0.05;
+                let maxQuality = 1.0;
+                let quality = 0.8;
+                let bestBlob = null;
+
+                // Simple iterative approach to approach target KB
+                canvas.toBlob(function cb(blob) {
+                    if (!blob) return;
+                    bestBlob = blob;
+                    
+                    // Loop to adjust quality based on target size
+                    let currentQuality = 0.9;
+                    let iterations = 0;
+
+                    function tryCompress() {
+                        canvas.toBlob(function(b) {
+                            if (!b) return;
+                            let currentKB = b.size / 1024;
+                            
+                            if ((currentKB <= targetKB || iterations > 8) || currentQuality <= 0.05) {
+                                // Trigger download once target is reached or close enough
+                                const link = document.createElement('a');
+                                link.href = URL.createObjectURL(b);
+                                link.download = `${customName}.jpg`;
+                                link.click();
+                            } else {
+                                currentQuality -= 0.15;
+                                iterations++;
+                                canvas.toBlob(arguments.callee, 'image/jpeg', currentQuality);
+                            }
+                        }, 'image/jpeg', currentQuality);
+                    }
+
+                    tryCompress();
+
+                }, 'image/jpeg', quality);
+            };
+        };
+
+        reader.readAsDataURL(file);
+    }
+</script>
+
+</body>
+</html>
