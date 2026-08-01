@@ -206,6 +206,7 @@
     async function generatePrintLayout() {
         const fileInput = document.getElementById('cardFile');
         const password = document.getElementById('pdfPassword').value;
+        const cardType = document.getElementById('cardType').value;
         let outputName = document.getElementById('outputName').value.trim() || "Printable_Card";
         outputName = outputName.replace(/\s+/g, '_');
 
@@ -232,7 +233,6 @@
 
                 async function getCardImage(pageNumber) {
                     const page = await pdfDoc.getPage(pageNumber);
-                    // Scale high rakha gaya hai taaki text aur details bilkul sharp aur highlighted print ho
                     const viewport = page.getViewport({ scale: 3.0 });
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
@@ -244,33 +244,50 @@
                     const cropCanvas = document.createElement('canvas');
                     const cropCtx = cropCanvas.getContext('2d');
                     
-                    let cropWidth = canvas.width * 0.75;
-                    let cropHeight = canvas.height * 0.30;
-                    let startX = (canvas.width - cropWidth) / 2;
-                    let startY = canvas.height * 0.05;
+                    let cropWidth, cropHeight, startX, startY;
+
+                    if (cardType === 'aadhaar') {
+                        // Official e-Aadhaar PDF ke liye exact middle/lower section jahan actual card hota hai
+                        cropWidth = canvas.width * 0.72;
+                        cropHeight = canvas.height * 0.32;
+                        startX = (canvas.width - cropWidth) / 2;
+                        startY = canvas.height * 0.38; // Adjusted down to capture the actual card box
+                    } else {
+                        // Baaki cards ke liye standard crop
+                        cropWidth = canvas.width * 0.80;
+                        cropHeight = canvas.height * 0.40;
+                        startX = (canvas.width - cropWidth) / 2;
+                        startY = canvas.height * 0.10;
+                    }
 
                     cropCanvas.width = cropWidth;
                     cropCanvas.height = cropHeight;
 
-                    // Image ko contrast aur sharpness dene ke liye thoda enhance kiya gaya hai
                     cropCtx.drawImage(canvas, startX, startY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
                     return cropCanvas.toDataURL('image/jpeg', 1.0);
                 }
 
-                // Front Side - Page ke bottom par set kiya gaya hai
-                const imgData1 = await getCardImage(1);
-                doc.addImage(imgData1, 'JPEG', 55, 140, 100, 63);
+                const cardWidth = 85.6;
+                const cardHeight = 54;
+                const X_Position = (210 - cardWidth) / 2; // Centered horizontally
 
-                // Back Side - Page ke bilkul end bottom par set kiya gaya hai
+                // Front Side - A4 page ke lower-middle area mein
+                const imgData1 = await getCardImage(1);
+                doc.addImage(imgData1, 'JPEG', X_Position, 160, cardWidth, cardHeight);
+
+                // Back Side - A4 page ke bilkul bottom par
                 if (pdfDoc.numPages > 1) {
                     const imgData2 = await getCardImage(2);
-                    doc.addImage(imgData2, 'JPEG', 55, 215, 100, 63);
+                    doc.addImage(imgData2, 'JPEG', X_Position, 220, cardWidth, cardHeight);
                 }
 
             } else {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    doc.addImage(e.target.result, 'JPEG', 55, 215, 100, 63);
+                    const cardWidth = 85.6;
+                    const cardHeight = 54;
+                    const X_Position = (210 - cardWidth) / 2;
+                    doc.addImage(e.target.result, 'JPEG', X_Position, 220, cardWidth, cardHeight);
                     doc.save(`${outputName}.pdf`);
                 };
                 reader.readAsDataURL(file);
