@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -101,18 +101,20 @@
         .hidden {
             display: none;
         }
-        .preview-box {
-            text-align: center;
-            margin: 15px 0;
-            background: #f1f3f5;
-            padding: 10px;
+        .preview-section {
+            background: #f8f9fa;
+            border: 1px solid #ced4da;
             border-radius: 6px;
-            border: 1px dashed #ced4da;
+            padding: 15px;
+            margin-bottom: 15px;
+            text-align: center;
         }
-        .preview-box canvas {
+        .preview-section img {
             max-width: 100%;
             height: auto;
-            border: 1px solid #ccc;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-top: 8px;
         }
         button {
             background-color: #4CAF50;
@@ -169,7 +171,7 @@
 
     <main>
         <div class="container">
-            <h2>Card Print Studio (Manual Adjust)</h2>
+            <h2>Card Print Studio</h2>
             
             <div class="form-group">
                 <label for="cardType">Select Card Type:</label>
@@ -192,22 +194,23 @@
 
             <div class="form-group">
                 <label for="cardFile">Upload Card File (PDF or Image):</label>
-                <input type="file" id="cardFile" accept="application/pdf,image/*" onchange="previewCard()">
+                <input type="file" id="cardFile" accept="application/pdf,image/*" onchange="processFileForPreview()">
             </div>
 
-            <!-- Manual Adjustment Sliders for Crop Position -->
-            <div class="form-group" id="manualControls" style="display:none;">
-                <label>Vertical Crop Position (Adjust if needed):</label>
-                <input type="range" id="cropRange" min="0" max="80" value="30" oninput="previewCard()">
-                <small style="color:#6c757d;">Slider ko aage-peeche karke card ki position set karein.</small>
+            <!-- Manual Position Adjustment Slider -->
+            <div class="form-group" id="sliderGroup" style="display:none;">
+                <label for="verticalOffset">Vertical Crop Position Adjustment:</label>
+                <input type="range" id="verticalOffset" min="0" max="600" value="220" oninput="updatePreviewImage()">
+                <small style="color: #6c757d;">Card ko sahi jagah crop karne ke liye slider ko upar-neeche karein.</small>
             </div>
 
-            <div class="preview-box" id="previewContainer" style="display:none;">
-                <label>Front Card Preview:</label>
-                <canvas id="cropPreviewCanvas"></canvas>
+            <!-- Live Preview Box -->
+            <div class="preview-section" id="previewBox" style="display:none;">
+                <label><b>Live Front Card Preview:</b></label>
+                <img id="previewImg" alt="Card Preview">
             </div>
 
-            <button onclick="generatePrintLayout()">Generate Printable PDF</button>
+            <button onclick="generatePrintLayout()">Generate & Download Printable PDF</button>
             <a href="index.html" class="back-link">&larr; Back to Home</a>
         </div>
     </main>
@@ -218,7 +221,8 @@
     </footer>
 
 <script>
-    let globalPdfDoc = null;
+    let loadedPdfDoc = null;
+    let originalCanvas = null;
 
     function handleCardSelection() {
         const cardType = document.getElementById('cardType').value;
@@ -230,15 +234,13 @@
         }
     }
 
-    async function previewCard() {
+    async function processFileForPreview() {
         const fileInput = document.getElementById('cardFile');
         const password = document.getElementById('pdfPassword').value;
-        const cardType = document.getElementById('cardType').value;
-        const previewContainer = document.getElementById('previewContainer');
-        const manualControls = document.getElementById('manualControls');
+        const previewBox = document.getElementById('previewBox');
+        const sliderGroup = document.getElementById('sliderGroup');
 
         if (fileInput.files.length === 0) return;
-
         const file = fileInput.files[0];
 
         try {
@@ -246,64 +248,74 @@
                 const arrayBuffer = await file.arrayBuffer();
                 try {
                     const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer, password: password });
-                    globalPdfDoc = await loadingTask.promise;
+                    loadedPdfDoc = await loadingTask.promise;
                 } catch (err) {
-                    return; // Password error can be handled during final generation
+                    alert("PDF password galat ho sakta hai ya file locked hai.");
+                    return;
                 }
 
-                manualControls.style.display = 'block';
-                previewContainer.style.display = 'block';
-                renderPreviewCanvas();
+                const page = await loadedPdfDoc.getPage(1);
+                const viewport = page.getViewport({ scale: 2.0 });
+                originalCanvas = document.createElement('canvas');
+                const ctx = originalCanvas.getContext('2d');
+                originalCanvas.height = viewport.height;
+                originalCanvas.width = viewport.width;
+
+                await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+                sliderGroup.style.display = 'block';
+                previewBox.style.display = 'block';
+                updatePreviewImage();
+            } else {
+                // Agar direct image upload ki ho
+                sliderGroup.style.display = 'none';
+                previewBox.style.display = 'block';
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('previewImg').src = e.target.result;
+                };
+                reader.readAsDataURL(file);
             }
-        } catch (e) {
-            console.error(e);
+        } catch (error) {
+            console.error("Preview error:", error);
+            alert("File load karne mein samasya aayi.");
         }
     }
 
-    async function renderPreviewCanvas() {
-        if (!globalPdfDoc) return;
+    function updatePreviewImage() {
+        if (!originalCanvas) return;
         const cardType = document.getElementById('cardType').value;
-        const rangeVal = document.getElementById('cropRange').value;
+        const sliderVal = parseInt(document.getElementById('verticalOffset').value);
 
-        const page = await globalPdfDoc.getPage(1);
-        const viewport = page.getViewport({ scale: 1.5 });
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
+        const cropCanvas = document.createElement('canvas');
+        const cropCtx = cropCanvas.getContext('2d');
 
-        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-
+        const halfWidth = originalCanvas.width / 2;
         let cropWidth, cropHeight, startX, startY;
-        const halfWidth = canvas.width / 2;
 
         if (cardType === 'aadhaar') {
-            cropWidth = halfWidth * 0.92;
-            cropHeight = canvas.height * 0.35;
-            startX = halfWidth * 0.04;
-            // Range value controls vertical starting position dynamically
-            startY = (canvas.height * (rangeVal / 100));
+            cropWidth = halfWidth * 0.90;
+            cropHeight = originalCanvas.height * 0.32;
+            startX = halfWidth * 0.05;
+            startY = sliderVal; // Slider value controls vertical crop position
         } else {
-            cropWidth = canvas.width * 0.85;
-            cropHeight = canvas.height * 0.40;
-            startX = (canvas.width - cropWidth) / 2;
-            startY = (canvas.height * (rangeVal / 100));
+            cropWidth = originalCanvas.width * 0.85;
+            cropHeight = originalCanvas.height * 0.38;
+            startX = (originalCanvas.width - cropWidth) / 2;
+            startY = sliderVal;
         }
 
-        const previewCanvas = document.getElementById('cropPreviewCanvas');
-        previewCanvas.width = cropWidth;
-        previewCanvas.height = cropHeight;
-        const pCtx = previewCanvas.getContext('2d');
-        pCtx.drawImage(canvas, startX, startY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
-    }
+        cropCanvas.width = cropWidth;
+        cropCanvas.height = cropHeight;
+        cropCtx.drawImage(originalCanvas, startX, startY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
 
-    document.getElementById('cropRange').addEventListener('input', renderPreviewCanvas);
+        document.getElementById('previewImg').src = cropCanvas.toDataURL('image/jpeg', 1.0);
+    }
 
     async function generatePrintLayout() {
         const fileInput = document.getElementById('cardFile');
-        const password = document.getElementById('pdfPassword').value;
         const cardType = document.getElementById('cardType').value;
-        const rangeVal = document.getElementById('cropRange').value;
+        const sliderVal = parseInt(document.getElementById('verticalOffset').value);
         let outputName = document.getElementById('outputName').value.trim() || "Printable_Card";
         outputName = outputName.replace(/\s+/g, '_');
 
@@ -317,72 +329,57 @@
         const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
         try {
-            if (file.type === 'application/pdf') {
-                const arrayBuffer = await file.arrayBuffer();
-                let pdfDoc;
-                try {
-                    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer, password: password });
-                    pdfDoc = await loadingTask.promise;
-                } catch (err) {
-                    alert("PDF password galat ho sakta hai ya file locked hai.");
-                    return;
-                }
+            const cardWidth = 85.6; // Standard PVC card width in mm
+            const cardHeight = 54;  // Standard PVC card height in mm
+            const X_Position = (210 - cardWidth) / 2; // Horizontally centered
 
-                async function getCardImage(pageNumber, isBack = false) {
-                    const page = await pdfDoc.getPage(pageNumber);
-                    const viewport = page.getViewport({ scale: 3.0 });
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    canvas.height = viewport.height;
-                    canvas.width = viewport.width;
-
-                    await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-
+            if (file.type === 'application/pdf' && loadedPdfDoc) {
+                
+                function getCroppedDataURL(canvasSource, isBack = false) {
                     const cropCanvas = document.createElement('canvas');
                     const cropCtx = cropCanvas.getContext('2d');
-                    
-                    const halfWidth = canvas.width / 2;
+                    const halfWidth = canvasSource.width / 2;
                     let cropWidth, cropHeight, startX, startY;
 
                     if (cardType === 'aadhaar') {
-                        cropWidth = halfWidth * 0.92;
-                        cropHeight = canvas.height * 0.35;
-                        startX = isBack ? halfWidth + (halfWidth * 0.04) : halfWidth * 0.04;
-                        startY = (canvas.height * (rangeVal / 100));
+                        cropWidth = halfWidth * 0.90;
+                        cropHeight = canvasSource.height * 0.32;
+                        startX = isBack ? halfWidth + (halfWidth * 0.05) : halfWidth * 0.05;
+                        startY = sliderVal;
                     } else {
-                        cropWidth = canvas.width * 0.85;
-                        cropHeight = canvas.height * 0.40;
-                        startX = (canvas.width - cropWidth) / 2;
-                        startY = (canvas.height * (rangeVal / 100));
+                        cropWidth = canvasSource.width * 0.85;
+                        cropHeight = canvasSource.height * 0.38;
+                        startX = (canvasSource.width - cropWidth) / 2;
+                        startY = sliderVal;
                     }
 
                     cropCanvas.width = cropWidth;
                     cropCanvas.height = cropHeight;
-                    cropCtx.drawImage(canvas, startX, startY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+                    cropCtx.drawImage(canvasSource, startX, startY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
                     return cropCanvas.toDataURL('image/jpeg', 1.0);
                 }
 
-                const cardWidth = 85.6;
-                const cardHeight = 54;
-                const X_Position = (210 - cardWidth) / 2;
-
-                const imgData1 = await getCardImage(1, false);
+                // Front Side (A4 page ke lower-middle mein)
+                const imgData1 = getCroppedDataURL(originalCanvas, false);
                 doc.addImage(imgData1, 'JPEG', X_Position, 140, cardWidth, cardHeight);
 
+                // Back Side (A4 page ke bilkul bottom par)
                 if (cardType === 'aadhaar') {
-                    const imgData2 = await getCardImage(1, true);
+                    const imgData2 = getCroppedDataURL(originalCanvas, true);
                     doc.addImage(imgData2, 'JPEG', X_Position, 205, cardWidth, cardHeight);
-                } else if (pdfDoc.numPages > 1) {
-                    const imgData2 = await getCardImage(2, false);
+                } else if (loadedPdfDoc.numPages > 1) {
+                    const page2 = await loadedPdfDoc.getPage(2);
+                    const viewport2 = page2.getViewport({ scale: 2.0 });
+                    const canvas2 = document.createElement('canvas');
+                    await page2.render({ canvasContext: canvas2.getContext('2d'), viewport: viewport2 }).promise;
+                    const imgData2 = getCroppedDataURL(canvas2, false);
                     doc.addImage(imgData2, 'JPEG', X_Position, 205, cardWidth, cardHeight);
                 }
 
             } else {
+                // Image file handling
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    const cardWidth = 85.6;
-                    const cardHeight = 54;
-                    const X_Position = (210 - cardWidth) / 2;
                     doc.addImage(e.target.result, 'JPEG', X_Position, 205, cardWidth, cardHeight);
                     doc.save(`${outputName}.pdf`);
                 };
@@ -394,12 +391,10 @@
 
         } catch (error) {
             console.error("Error:", error);
-            alert("Layout generate karne mein samasya aayi.");
+            alert("Printable layout generate karne mein samasya aayi.");
         }
     }
 </script>
 
 </body>
 </html>
-                       
-            
